@@ -11,9 +11,13 @@ st.set_page_config(
 )
 
 st.title("🌍 국가별 MBTI 비율 분석")
-st.write("국가를 선택하면 해당 국가의 MBTI 16가지 유형별 비율을 확인할 수 있습니다.")
+st.write(
+    "국가를 선택하면 해당 국가의 MBTI 16가지 유형별 비율을 "
+    "막대그래프로 확인할 수 있습니다."
+)
 
-DATA_FILE = Path(__file__).parent / "countriesMBTI_16types.csv"
+# pages 폴더의 상위 폴더에 있는 CSV 파일 경로
+DATA_FILE = Path(__file__).resolve().parent.parent / "countriesMBTI_16types.csv"
 
 MBTI_TYPES = [
     "INFJ", "ISFJ", "INTP", "ISFP",
@@ -22,9 +26,26 @@ MBTI_TYPES = [
     "ESTP", "ISTJ", "ENFJ", "ESFJ"
 ]
 
+
+# CSV 데이터 불러오기
 @st.cache_data
 def load_data():
-    df = pd.read_csv(DATA_FILE)
+    df = pd.read_csv(DATA_FILE, encoding="utf-8-sig")
+
+    if "Country" not in df.columns:
+        raise ValueError("Country 컬럼이 없습니다.")
+
+    missing_columns = [
+        col for col in MBTI_TYPES
+        if col not in df.columns
+    ]
+
+    if missing_columns:
+        raise ValueError(
+            f"누락된 MBTI 컬럼: {missing_columns}"
+        )
+
+    df = df[["Country"] + MBTI_TYPES].copy()
 
     df["Country"] = df["Country"].astype(str).str.strip()
 
@@ -32,42 +53,66 @@ def load_data():
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
     df = df.dropna(subset=["Country"] + MBTI_TYPES)
+    df = df[df["Country"] != ""]
     df = df.drop_duplicates(subset=["Country"])
+
+    if df.empty:
+        raise ValueError("분석할 데이터가 없습니다.")
 
     return df
 
 
+# 파란색 그라데이션 생성
 def blue_gradient(n):
+
     start = (21, 101, 192)
     end = (220, 235, 250)
 
     colors = []
 
     for i in range(n):
+
         ratio = i / max(n - 1, 1)
 
         rgb = tuple(
-            round(start[j] + (end[j] - start[j]) * ratio)
+            round(
+                start[j] +
+                (end[j] - start[j]) * ratio
+            )
             for j in range(3)
         )
 
-        colors.append("#{:02X}{:02X}{:02X}".format(*rgb))
+        colors.append(
+            "#{:02X}{:02X}{:02X}".format(*rgb)
+        )
 
     return colors
 
 
+# CSV 파일 존재 확인
 if not DATA_FILE.exists():
-    st.error("CSV 파일을 app.py와 같은 폴더에 넣어주세요.")
+
+    st.error(
+        f"CSV 파일을 찾을 수 없습니다: {DATA_FILE}"
+    )
+
     st.stop()
 
+
+# 데이터 불러오기
 try:
+
     df = load_data()
+
 except Exception as e:
+
     st.error(f"데이터 오류: {e}")
+
     st.stop()
 
 
-countries = sorted(df["Country"].unique())
+# 국가 선택
+countries = sorted(df["Country"].unique().tolist())
 
 default_index = (
     countries.index("South Korea")
@@ -81,76 +126,147 @@ selected_country = st.selectbox(
     index=default_index
 )
 
-country_data = df[
-    df["Country"] == selected_country
-][MBTI_TYPES].iloc[0]
 
+# 선택한 국가의 MBTI 데이터
+country_data = df.loc[
+    df["Country"] == selected_country,
+    MBTI_TYPES
+].iloc[0]
+
+
+# 백분율 변환
 if country_data.max() <= 1.5:
+
     percentages = country_data * 100
+
 else:
+
     percentages = country_data.copy()
 
+
+# 높은 비율부터 정렬
 chart_data = (
-    percentages.rename_axis("MBTI")
+    percentages
+    .rename_axis("MBTI")
     .reset_index(name="비율")
     .sort_values("비율", ascending=False)
     .reset_index(drop=True)
 )
 
-# 1위 빨간색, 나머지 파란색 그라데이션
-colors = ["#E53935"] + blue_gradient(len(chart_data) - 1)
 
+# 색상 설정
+# 1위 빨간색
+# 나머지 파란색 그라데이션
+colors = (
+    ["#E53935"] +
+    blue_gradient(len(chart_data) - 1)
+)
+
+
+# 가장 높은 유형
 top_mbti = chart_data.iloc[0]["MBTI"]
+
 top_percentage = chart_data.iloc[0]["비율"]
 
+
+# 상단 통계
 col1, col2, col3 = st.columns(3)
 
-col1.metric("선택 국가", selected_country)
-col2.metric("가장 높은 유형", top_mbti)
-col3.metric("가장 높은 비율", f"{top_percentage:.2f}%")
+col1.metric(
+    "선택 국가",
+    selected_country
+)
+
+col2.metric(
+    "가장 높은 MBTI",
+    top_mbti
+)
+
+col3.metric(
+    "가장 높은 비율",
+    f"{top_percentage:.2f}%"
+)
 
 
+# 막대그래프 생성
 fig = go.Figure(
+
     data=[
+
         go.Bar(
+
             x=chart_data["MBTI"],
+
             y=chart_data["비율"],
+
             marker_color=colors,
+
             text=[
                 f"{value:.2f}%"
                 for value in chart_data["비율"]
             ],
+
             textposition="outside",
+
             hovertemplate=(
                 "<b>%{x}</b><br>"
                 "비율: %{y:.2f}%"
                 "<extra></extra>"
             )
+
         )
+
     ]
+
 )
 
+
+# 그래프 디자인
 fig.update_layout(
+
     title=f"{selected_country}의 MBTI 유형별 비율",
+
     xaxis_title="MBTI 유형",
+
     yaxis_title="비율 (%)",
+
     yaxis=dict(
+
         rangemode="tozero",
+
         ticksuffix="%",
+
         showgrid=True
+
     ),
+
     xaxis=dict(
+
         categoryorder="array",
+
         categoryarray=chart_data["MBTI"].tolist()
+
     ),
+
     showlegend=False,
+
     height=560,
+
     template="plotly_white"
+
 )
 
-st.plotly_chart(fig, use_container_width=True)
 
+# 그래프 출력
+st.plotly_chart(
+    fig,
+    use_container_width=True
+)
+
+
+# 상세 데이터
 with st.expander("MBTI 상세 데이터 보기"):
+
     display_data = chart_data.copy()
 
     display_data["비율"] = display_data["비율"].map(
@@ -158,6 +274,7 @@ with st.expander("MBTI 상세 데이터 보기"):
     )
 
     display_data.index = display_data.index + 1
+
     display_data.index.name = "순위"
 
     st.dataframe(
@@ -165,6 +282,7 @@ with st.expander("MBTI 상세 데이터 보기"):
         use_container_width=True
     )
 
+
 st.caption(
-    "참고: 제공된 CSV 원본 데이터를 기준으로 분석합니다."
+    "제공된 CSV 원본 데이터를 기준으로 분석합니다."
 )
