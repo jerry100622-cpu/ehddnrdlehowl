@@ -3,3 +3,5 @@ folium>=0.17.0
 streamlit-folium>=0.22.0
 pandas
 plotly
+matplotlib
+koreanize-matplotlib
