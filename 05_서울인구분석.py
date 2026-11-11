@@ -238,3 +238,5 @@ st.divider()
 st.caption(
     "자료: population.csv | 서울특별시 연령별 인구 데이터"
 )
+BASE_DIR = Path(__file__).resolve().parent.parent
+FILE_PATH = BASE_DIR / "population.csv"
