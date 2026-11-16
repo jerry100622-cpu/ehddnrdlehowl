@@ -106,3 +106,18 @@ st.dataframe(
     use_container_width=True,
     hide_index=True
 )
+import os
+import pandas as pd
+import streamlit as st
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+CSV_PATH = os.path.join(BASE_DIR, "temperature (5).csv")
+
+try:
+    df = pd.read_csv(CSV_PATH, encoding="cp949")
+except UnicodeDecodeError:
+    df = pd.read_csv(CSV_PATH, encoding="utf-8-sig")
+except FileNotFoundError:
+    st.error(f"CSV 파일을 찾을 수 없습니다: {CSV_PATH}")
+    st.stop()
