@@ -1,6 +1,5 @@
-import streamlit as st
-import pandas as pd
-import numpy as np
-import plotly.graph_objects as go
-from sklearn.linear_model import LinearRegression
-from pathlib import Path
+streamlit
+pandas
+numpy
+scikit-learn
+plotly
