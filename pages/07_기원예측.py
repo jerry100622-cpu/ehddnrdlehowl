@@ -443,3 +443,49 @@ st.info(
     "실제 기온은 기후 변화, 자연환경 등 다양한 요인으로 달라질 수 있습니다."
 )
 
+
+import streamlit as st
+import pandas as pd
+from pathlib import Path
+
+# 현재 파이썬 파일 위치
+current_dir = Path(__file__).resolve().parent
+
+# CSV 파일 검색 위치
+search_paths = [
+    current_dir / "temperature.csv",
+    current_dir.parent / "temperature.csv",
+    Path.cwd() / "temperature.csv",
+    Path.cwd().parent / "temperature.csv"
+]
+
+# CSV 파일 찾기
+csv_path = next(
+    (p for p in search_paths if p.is_file()),
+    None
+)
+
+if csv_path is None:
+    st.error("temperature.csv 파일을 찾을 수 없습니다.")
+
+    st.write("현재 작업 폴더:", Path.cwd())
+    st.write("파이썬 파일 위치:", current_dir)
+
+    st.write("검색한 경로:")
+    for p in search_paths:
+        st.write(str(p), " - ", p.exists())
+
+    st.stop()
+
+# CSV 읽기
+try:
+    try:
+        df = pd.read_csv(csv_path, encoding="cp949")
+    except UnicodeDecodeError:
+        df = pd.read_csv(csv_path, encoding="utf-8-sig")
+
+    st.success("temperature.csv 파일을 정상적으로 불러왔습니다.")
+
+except Exception as e:
+    st.error(f"CSV 파일 읽기 오류: {e}")
+    st.stop()
