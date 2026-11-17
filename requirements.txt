@@ -5,3 +5,5 @@ pandas
 plotly
 matplotlib
 koreanize-matplotlib
+numpy
+scikit-learn
